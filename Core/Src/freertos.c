@@ -162,6 +162,11 @@ void StartTask2(void *argument)
 	   printf ("Resuming DefaultTask\n");
 	   osThreadResume(task1Handle);
     }
+
+	if (indx ==25){
+		printf ("Terminating DefaultTask\n");
+		osThreadTerminate(defaultTaskHandle);
+    }
   }
   /* USER CODE END StartTask2 */
 }
