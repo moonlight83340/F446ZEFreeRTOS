@@ -45,7 +45,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+uint32_t indx;
 /* USER CODE END Variables */
 /* Definitions for task1 */
 osThreadId_t task1Handle;
@@ -145,10 +145,23 @@ void StartTask2(void *argument)
 {
   /* USER CODE BEGIN StartTask2 */
   /* Infinite loop */
+  indx = 0;
   for(;;)
   {
-	  HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
-    osDelay(250);
+	//HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
+    //osDelay(250);
+	printf ("Task2 = %d\n", indx++);
+    osDelay(2000);
+
+	if (indx==4){
+           printf ("suspending DefaultTask\n");
+               osThreadSuspend(task1Handle);
+
+	}
+	if (indx ==7){
+	   printf ("Resuming DefaultTask\n");
+	   osThreadResume(task1Handle);
+    }
   }
   /* USER CODE END StartTask2 */
 }
