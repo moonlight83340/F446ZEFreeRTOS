@@ -162,7 +162,10 @@ void StartTask2(void *argument)
 	   printf ("Resuming DefaultTask\n");
 	   osThreadResume(task1Handle);
     }
-
+	if (indx ==10){
+		  uint32_t PreviousWakeTime = osKernelSysTick();
+		  osDelayUntil(&PreviousWakeTime, 4000);
+    }
 	if (indx ==25){
 		printf ("Terminating DefaultTask\n");
 		osThreadTerminate(defaultTaskHandle);
