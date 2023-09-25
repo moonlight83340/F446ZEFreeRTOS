@@ -21,7 +21,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "main.h"
-#include "cmsis_os.h"
+#include "cmsis_os2.h"
+#include "usart.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -54,12 +55,31 @@ const osThreadAttr_t task1_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for task2 */
-osThreadId_t task2Handle;
-const osThreadAttr_t task2_attributes = {
-  .name = "task2",
+/* Definitions for normalTask */
+osThreadId_t normalTaskHandle;
+const osThreadAttr_t normalTask_attributes = {
+  .name = "normalTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for highTask */
+osThreadId_t highTaskHandle;
+const osThreadAttr_t highTask_attributes = {
+  .name = "highTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for lowTask */
+osThreadId_t lowTaskHandle;
+const osThreadAttr_t lowTask_attributes = {
+  .name = "lowTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for BinSem */
+osSemaphoreId_t BinSemHandle;
+const osSemaphoreAttr_t BinSem_attributes = {
+  .name = "BinSem"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,7 +88,9 @@ const osThreadAttr_t task2_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartTask1(void *argument);
-void StartTask2(void *argument);
+void StartNormalTask(void *argument);
+void StartHighTask(void *argument);
+void StartLowTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -86,6 +108,10 @@ void MX_FREERTOS_Init(void) {
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
+  /* Create the semaphores(s) */
+  /* creation of BinSem */
+  BinSemHandle = osSemaphoreNew(1, 1, &BinSem_attributes);
+
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -102,8 +128,14 @@ void MX_FREERTOS_Init(void) {
   /* creation of task1 */
   task1Handle = osThreadNew(StartTask1, NULL, &task1_attributes);
 
-  /* creation of task2 */
-  task2Handle = osThreadNew(StartTask2, NULL, &task2_attributes);
+  /* creation of normalTask */
+  normalTaskHandle = osThreadNew(StartNormalTask, NULL, &normalTask_attributes);
+
+  /* creation of highTask */
+  highTaskHandle = osThreadNew(StartHighTask, NULL, &highTask_attributes);
+
+  /* creation of lowTask */
+  lowTaskHandle = osThreadNew(StartLowTask, NULL, &lowTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -129,49 +161,94 @@ void StartTask1(void *argument)
   for(;;)
   {
 	HAL_GPIO_TogglePin(LD1_GPIO_Port,LD1_Pin);
-    osDelay(250);
+    //osDelay(50);
   }
   /* USER CODE END StartTask1 */
 }
 
-/* USER CODE BEGIN Header_StartTask2 */
+/* USER CODE BEGIN Header_StartNormalTask */
 /**
-* @brief Function implementing the task2 thread.
+* @brief Function implementing the normalTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask2 */
-void StartTask2(void *argument)
+/* USER CODE END Header_StartNormalTask */
+void StartNormalTask(void *argument)
 {
-  /* USER CODE BEGIN StartTask2 */
+  /* USER CODE BEGIN StartNormalTask */
   /* Infinite loop */
-  indx = 0;
   for(;;)
   {
-	//HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
-    //osDelay(250);
-	printf ("Task2 = %d\n", indx++);
-    osDelay(2000);
+	char *str1 = "Entered MediumTask\n";
+	HAL_UART_Transmit(&huart3, (uint8_t *) str1, strlen (str1), 100);
 
-	if (indx==4){
-           printf ("suspending DefaultTask\n");
-               osThreadSuspend(task1Handle);
 
-	}
-	if (indx ==7){
-	   printf ("Resuming DefaultTask\n");
-	   osThreadResume(task1Handle);
-    }
-	if (indx ==10){
-		  uint32_t PreviousWakeTime = osKernelSysTick();
-		  osDelayUntil(&PreviousWakeTime, 4000);
-    }
-	if (indx ==25){
-		printf ("Terminating DefaultTask\n");
-		osThreadTerminate(defaultTaskHandle);
-    }
+	char *str2 = "Leaving MediumTask\n\n";
+	HAL_UART_Transmit(&huart3, (uint8_t *) str2, strlen (str2), 100);
+	osDelay(500);
   }
-  /* USER CODE END StartTask2 */
+  /* USER CODE END StartNormalTask */
+}
+
+/* USER CODE BEGIN Header_StartHighTask */
+/**
+* @brief Function implementing the highTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartHighTask */
+void StartHighTask(void *argument)
+{
+  /* USER CODE BEGIN StartHighTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	char *str1 = "Entered HighTask and waiting for Semaphore\n";
+	HAL_UART_Transmit(&huart3, (uint8_t *) str1, strlen (str1), 100);
+
+	osSemaphoreAcquire(BinSemHandle, osWaitForever);
+
+	char *str3 = "Semaphore acquired by HIGH Task\n";
+	HAL_UART_Transmit(&huart3, (uint8_t *) str3, strlen (str3), 100);
+
+	char *str2 = "Leaving HighTask and releasing Semaphore\n\n";
+	HAL_UART_Transmit(&huart3, (uint8_t *) str2, strlen (str2), 100);
+
+	osSemaphoreRelease(BinSemHandle);
+	osDelay(500);
+  }
+  /* USER CODE END StartHighTask */
+}
+
+/* USER CODE BEGIN Header_StartLowTask */
+/**
+* @brief Function implementing the lowTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartLowTask */
+void StartLowTask(void *argument)
+{
+  /* USER CODE BEGIN StartLowTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	char *str1 = "Entered LOWTask and waiting for semaphore\n";
+	HAL_UART_Transmit(&huart3, (uint8_t *) str1, strlen (str1), 100);
+
+	osSemaphoreAcquire(BinSemHandle, osWaitForever);
+	char *str3 = "Semaphore acquired by LOW Task\n";
+	HAL_UART_Transmit(&huart3, (uint8_t *) str3, strlen (str3), 100);
+
+	while (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13));  // wait till the pin go low
+
+	char *str2 = "Leaving LOWTask and releasing Semaphore\n\n";
+	HAL_UART_Transmit(&huart3, (uint8_t *) str2, strlen (str2), 100);
+
+	osSemaphoreRelease(BinSemHandle);
+	osDelay(500);
+  }
+  /* USER CODE END StartLowTask */
 }
 
 /* Private application code --------------------------------------------------*/
